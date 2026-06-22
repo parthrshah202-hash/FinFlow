@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+logs/pipeline.log
+data/
+*.egg-info/
+.venv/

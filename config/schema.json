@@ -1,0 +1,10 @@
+{
+  "canonical_fields": [
+    "Transaction Date",
+    "Transaction Details",
+    "Amount (Rs)",
+    "Type",
+    "Notes",
+    "Filename"
+  ]
+}
