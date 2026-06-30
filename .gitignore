@@ -4,4 +4,4 @@ __pycache__/
 logs/pipeline.log
 data/
 *.egg-info/
-.venv/
+venv/
