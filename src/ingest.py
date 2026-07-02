@@ -3,6 +3,26 @@ import logging
 
 logger=logging.getLogger()
 
+def clean_dict(result_dict):
+    """Clean the extracted result dict in place
+
+    Args:
+        result_dict (dictionary): The raw extracted dictionary
+        
+    Returns:
+        None
+    """
+    for index,header in enumerate(result_dict["headers"]):
+        if header is None:
+            header=''
+        result_dict["headers"][index]=header.replace("\n"," ")
+        
+    for row_idx, row in enumerate(result_dict["rows"]):
+        for cell_idx, cell in enumerate(row):
+            if cell is None:
+                cell=''
+            result_dict["rows"][row_idx][cell_idx] = cell.replace("\n", " ")
+
 
 def parse_pdf(file_path,source_type):
     """Parse a PDF received from the user
@@ -51,4 +71,9 @@ def parse_pdf(file_path,source_type):
                     return None
         
         logger.info(f"Data from PDF at {file_path} extracted successfully")
+        clean_dict(result_dict)
         return result_dict
+    
+if __name__=="__main__":
+    result=parse_pdf("C:\FinFlow\data\BankStatements\BS7-SBI_redact.pdf","Bank")
+    print(result)
