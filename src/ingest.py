@@ -16,13 +16,20 @@ def clean_dict(result_dict):
     for index, header in enumerate(result_dict["headers"]):
         if header is None:
             header = ""
-        result_dict["headers"][index] = header.replace("\n", " ")
+        result_dict["headers"][index] = str(header).replace("\n", " ")
 
     for row_idx, row in enumerate(result_dict["rows"]):
-        for cell_idx, cell in enumerate(row):
-            if cell is None:
-                cell = ""
-            result_dict["rows"][row_idx][cell_idx] = cell.replace("\n", " ")
+        if isinstance(row, dict):
+            for key, cell in list(row.items()):
+                if cell is None:
+                    row[key] = ""
+                else:
+                    row[key] = str(cell).replace("\n", " ")
+        else:
+            for cell_idx, cell in enumerate(row):
+                if cell is None:
+                    cell = ""
+                result_dict["rows"][row_idx][cell_idx] = str(cell).replace("\n", " ")
 
 
 def detect_upi_source(raw_text):
@@ -40,7 +47,7 @@ def detect_upi_source(raw_text):
     window_lines = lines[:30]
     for line in window_lines:
         normalized = line.strip()
-        if "UPI Transaction ID" in normalized:
+        if "UPITransactionID" in normalized:
             return "gpay"
         if "UTR No." in normalized:
             return "phonepe"
@@ -158,6 +165,112 @@ def parse_paytm(raw_text, file_path):
     
     return result_dict
 
+def parse_gpay(raw_text, file_path):
+    """Parse Google Pay UPI transaction statement and extract transaction details.
+
+    Args:
+        raw_text (str): Raw text content extracted from the Google Pay PDF statement
+        file_path (str): Path to the source PDF file for logging purposes
+    """
+    raw_blob = "\n".join(line.strip() for line in raw_text.splitlines() if line.strip())
+
+    header_pattern = re.compile(r"Transaction statement.*?Date&time Transactiondetails Amount", flags=re.IGNORECASE | re.DOTALL)
+    cleaned_blob = re.sub(header_pattern, "", raw_blob)
+
+    footer_pattern = re.compile(r"Note:.*?Page\d+of\d+", flags=re.IGNORECASE | re.DOTALL)
+    cleaned_blob = re.sub(footer_pattern, "", cleaned_blob)
+
+    lines = [line.strip() for line in cleaned_blob.splitlines() if line.strip()]
+
+    transaction_blocks = []
+    current_block = []
+    date_pattern = re.compile(r"(\d{2}[A-Za-z]{3},\d{4})")
+    end_pattern = re.compile(r"Paidby[A-Za-z]+")
+
+    for line in lines:
+        if date_pattern.search(line):
+            if current_block:
+                transaction_blocks.append(current_block)
+            current_block = [line]
+        elif current_block:
+            current_block.append(line)
+            if end_pattern.search(line):
+                transaction_blocks.append(current_block)
+                current_block = []
+
+    if current_block:
+        transaction_blocks.append(current_block)
+
+    if not transaction_blocks:
+        logger.warning("No GPay transactions found in file at %s", file_path)
+        return None
+
+    rows = []
+    for transaction_lines in transaction_blocks:
+        if not transaction_lines:
+            continue
+
+        first_line = transaction_lines[0]
+        date_match = date_pattern.search(first_line)
+        date_value = date_match.group(1).strip() if date_match else ""
+
+        time_value = ""
+        if len(transaction_lines) > 1:
+            time_match = re.search(r"(\d{2}:\d{2}[AP]M)", transaction_lines[1], flags=re.IGNORECASE)
+            time_value = time_match.group(1).strip() if time_match else ""
+
+        if "Paidto" in first_line:
+            transaction_type = "debit"
+            label = "Paidto"
+        elif "Receivedfrom" in first_line:
+            transaction_type = "credit"
+            label = "Receivedfrom"
+        else:
+            transaction_type = ""
+            label = ""
+            logger.warning("Unhandled GPay transaction type in %s: %s", file_path, first_line.strip())
+
+        details_match = None
+        amount_match = None
+        if label:
+            details_match = re.search(
+                rf"{re.escape(label)}(.+?)(₹?[\d,]+\.?\d*)\s*$",
+                first_line,
+            )
+            if details_match:
+                transaction_details = details_match.group(1).strip()
+                amount_value = details_match.group(2).strip()
+            else:
+                transaction_details = ""
+                amount_value = ""
+        else:
+            transaction_details = ""
+            amount_value = ""
+
+        if not amount_value:
+            amount_match = re.search(r"(₹?[\d,]+\.?\d*)\s*$", first_line)
+            amount_value = amount_match.group(1).strip() if amount_match else ""
+
+        if not transaction_details and label:
+            details_match = re.search(rf"{re.escape(label)}(.+)", first_line)
+            transaction_details = details_match.group(1).strip() if details_match else ""
+
+        upi_match = re.search(r"UPITransactionID:(\d+)", "\n".join(transaction_lines))
+        upi_id = upi_match.group(1).strip() if upi_match else ""
+
+        rows.append(
+            [
+                f"{date_value} {time_value}".strip(),
+                transaction_details,
+                upi_id,
+                amount_value,
+                transaction_type,
+            ]
+        )
+
+    result_dict = {"headers": ["Date & Time", "Transaction Details", "UPI Transaction ID", "Amount", "Type"], "rows": rows}
+    clean_dict(result_dict)
+    return result_dict
 
 def parse_pdf(file_path, source_type):
     """Parse a PDF received from the user
@@ -220,7 +333,9 @@ def parse_pdf(file_path, source_type):
             source = detect_upi_source(raw_text)
             if source == "paytm":
                 return parse_paytm(raw_text, file_path)
-            if source in {"gpay", "phonepe"}:
+            if source == "gpay":
+                return parse_gpay(raw_text, file_path)
+            if source in {"phonepe"}:
                 logger.warning("UPI source %s is not yet implemented for %s", source, file_path)
                 return None
             logger.warning("Unable to detect UPI source for %s", file_path)
@@ -231,5 +346,7 @@ def parse_pdf(file_path, source_type):
 
 if __name__ == "__main__":
     # result=parse_pdf(r"C:\FinFlow\data\BankStatements\BS7-SBI_redact.pdf","Bank")
-    result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI5_PAYTM_redact.pdf", "UPI")
-    print(result)
+    # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI5_PAYTM_redact.pdf", "UPI")
+    result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI1-GPAY_redact.pdf", "UPI")
+    print(result["rows"])
+    
