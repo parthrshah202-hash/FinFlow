@@ -231,7 +231,6 @@ def parse_gpay(raw_text, file_path):
             logger.warning("Unhandled GPay transaction type in %s: %s", file_path, first_line.strip())
 
         details_match = None
-        amount_match = None
         if label:
             details_match = re.search(
                 rf"{re.escape(label)}(.+?)(₹?[\d,]+\.?\d*)\s*$",
@@ -243,17 +242,14 @@ def parse_gpay(raw_text, file_path):
             else:
                 transaction_details = ""
                 amount_value = ""
+                logger.warning(
+                    "Failed to extract details/amount from GPay line in %s: %s",
+                    file_path,
+                    first_line.strip(),
+                )
         else:
             transaction_details = ""
             amount_value = ""
-
-        if not amount_value:
-            amount_match = re.search(r"(₹?[\d,]+\.?\d*)\s*$", first_line)
-            amount_value = amount_match.group(1).strip() if amount_match else ""
-
-        if not transaction_details and label:
-            details_match = re.search(rf"{re.escape(label)}(.+)", first_line)
-            transaction_details = details_match.group(1).strip() if details_match else ""
 
         upi_match = re.search(r"UPITransactionID:(\d+)", "\n".join(transaction_lines))
         upi_id = upi_match.group(1).strip() if upi_match else ""
