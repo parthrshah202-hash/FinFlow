@@ -268,6 +268,126 @@ def parse_gpay(raw_text, file_path):
     clean_dict(result_dict)
     return result_dict
 
+def parse_phonepe(raw_text, file_path):
+    """Parse PhonePe UPI transaction statement and extract transaction details.
+
+    Args:
+        raw_text (str): Raw text content extracted from the PhonePe PDF statement
+        file_path (str): Path to the source PDF file for logging
+    """
+    raw_blob = "\n".join(line.strip() for line in raw_text.splitlines() if line.strip())
+    
+    raw_blob = re.sub(r"([A-Za-z]{3})(\d{1,2},)", r"\1 \2", raw_blob) 
+    raw_blob = re.sub(r"(\d{4})(\d{1,2}:\d{2})", r"\1 \2", raw_blob) 
+
+    header_pattern = re.compile(
+        r"Transaction Statement for.*?Date Transaction Details Type Amount",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    cleaned_blob = re.sub(header_pattern, "", raw_blob)
+
+    column_header_pattern = re.compile(r"Date Transaction Details Type Amount", flags=re.IGNORECASE)
+    cleaned_blob = re.sub(column_header_pattern, "", cleaned_blob)
+
+    footer_pattern = re.compile(
+        r"Page\s+\d+\s+of\s+\d+.*?This is a system generated statement\. For any queries, contact us at ?https://support\.phonepe\.com/statement\.",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    cleaned_blob = re.sub(footer_pattern, "", cleaned_blob)
+
+    disclaimer_pattern = re.compile(r"This is an automatically generated statement.*$", flags=re.IGNORECASE | re.DOTALL)
+    cleaned_blob = re.sub(disclaimer_pattern, "", cleaned_blob)
+
+    lines = [line.strip() for line in cleaned_blob.splitlines() if line.strip()]
+
+    date_pattern = re.compile(r"^([A-Za-z]{3}\s+\d{1,2},\s+\d{4})\b")
+    type_amount_pattern = re.compile(
+        r"^([A-Za-z]{3}\s+\d{1,2},\s+\d{4})\s+(.*?)\s+(DEBIT|CREDIT)\s+(₹?[\d,]+\.?\d*)\s*$",
+        flags=re.IGNORECASE,
+    )
+    end_pattern = re.compile(r"^(Paid by|Credited to)\b", flags=re.IGNORECASE)
+    time_pattern = re.compile(r"^(\d{1,2}:\d{2}\s*[ap]m)\b", flags=re.IGNORECASE)
+
+    transaction_blocks = []
+    current_block = None
+
+    for line in lines:
+        if date_pattern.match(line):
+            if current_block is not None:
+                transaction_blocks.append(current_block)
+            current_block = [line]
+            continue
+
+        if current_block is None:
+            continue
+
+        if end_pattern.match(line):
+            current_block.append(line)
+            transaction_blocks.append(current_block)
+            current_block = None
+            continue
+
+        current_block.append(line)
+
+    if current_block is not None:
+        transaction_blocks.append(current_block)
+
+    if not transaction_blocks:
+        logger.warning("No PhonePe transactions found in file at %s", file_path)
+        return None
+
+    rows = []
+    for transaction_lines in transaction_blocks:
+        if not transaction_lines:
+            continue
+
+        first_line = transaction_lines[0]
+        type_amount_match = type_amount_pattern.match(first_line)
+        
+        if not type_amount_match:
+            logger.warning("Failed to extract type/amount from PhonePe line in %s: %s", file_path, first_line.strip())
+            continue
+
+        date_value = type_amount_match.group(1).strip()
+        transaction_details = type_amount_match.group(2).strip()
+        transaction_type = type_amount_match.group(3).lower()
+        amount_value = type_amount_match.group(4).strip()
+
+        time_value = ""
+        if len(transaction_lines) > 1:
+            time_line = transaction_lines[1].strip()
+            time_match = time_pattern.match(time_line)
+            if time_match:
+                time_value = time_match.group(1).strip()
+                remainder = time_line[time_match.end():].strip()
+                if remainder and not remainder.lower().startswith("transaction id"):
+                    if transaction_details:
+                        transaction_details = f"{transaction_details} {remainder}"
+                    else:
+                        transaction_details = remainder
+
+        utr_match = re.search(r"UTR No\.\s*(\d+)", "\n".join(transaction_lines), flags=re.IGNORECASE)
+        utr_no = utr_match.group(1).strip() if utr_match else ""
+
+        rows.append(
+            [
+                f"{date_value} {time_value}".strip(),
+                transaction_details.strip(),
+                utr_no,
+                amount_value,
+                transaction_type,
+            ]
+        )
+
+    if not rows:
+        logger.warning("No PhonePe transactions parsed from file at %s", file_path)
+        return None
+
+    result_dict = {"headers": ["Date & Time", "Transaction Details", "UTR No.", "Amount", "Type"], "rows": rows}
+    
+    clean_dict(result_dict)
+    return result_dict
+
 def parse_pdf(file_path, source_type):
     """Parse a PDF received from the user
 
@@ -331,9 +451,8 @@ def parse_pdf(file_path, source_type):
                 return parse_paytm(raw_text, file_path)
             if source == "gpay":
                 return parse_gpay(raw_text, file_path)
-            if source in {"phonepe"}:
-                logger.warning("UPI source %s is not yet implemented for %s", source, file_path)
-                return None
+            if source == "phonepe":
+                return parse_phonepe(raw_text, file_path)
             logger.warning("Unable to detect UPI source for %s", file_path)
             return None
 
@@ -343,6 +462,7 @@ def parse_pdf(file_path, source_type):
 if __name__ == "__main__":
     # result=parse_pdf(r"C:\FinFlow\data\BankStatements\BS7-SBI_redact.pdf","Bank")
     # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI5_PAYTM_redact.pdf", "UPI")
-    result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI1-GPAY_redact.pdf", "UPI")
-    print(result["rows"])
+    # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI1-GPAY_redact.pdf", "UPI")
+    result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI2-PHONEPE_redact.pdf", "UPI")
+    print(result)
     
