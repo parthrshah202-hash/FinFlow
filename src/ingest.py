@@ -1,5 +1,7 @@
 import logging
 import re
+import os
+import pandas as pd
 import pdfplumber
 
 logger = logging.getLogger()
@@ -459,10 +461,81 @@ def parse_pdf(file_path, source_type):
     return None
 
 
+def parse_zerodha_tradebook(filepath: str) -> list[dict]:
+    """Parse Zerodha tradebook CSV file and extract trade transaction details.
+
+    Args:
+        filepath (str): Path to the Zerodha tradebook CSV file for logging and ingestion
+
+    Returns:
+        list[dict] or None: A list of dictionaries representing individual trade records with
+            sanitized fields, or None if validation fails or the file is empty
+    """
+    expected_columns = {
+        "symbol",
+        "isin",
+        "trade_date",
+        "exchange",
+        "segment",
+        "series",
+        "trade_type",
+        "auction",
+        "quantity",
+        "price",
+        "trade_id",
+        "order_id",
+        "order_execution_time",
+        "expiry_date",
+    }
+    df = pd.read_csv(filepath, dtype={"trade_id": str, "order_id": str})
+
+    if set(df.columns) != expected_columns:
+        logger.warning("file with expected headers not uploaded: %s", filepath)
+        return None
+
+    if df.shape[0] == 0:
+        logger.warning("File is empty: %s", filepath)
+        return None
+
+    filename = os.path.basename(filepath)
+    rows = []
+
+    for _, row in df.iterrows():
+        row_dict = {
+            "trade_date": row["trade_date"],
+            "symbol": row["symbol"],
+            "trade_type": row["trade_type"],
+            "quantity": row["quantity"],
+            "price": row["price"],
+            "trade_id": row["trade_id"],
+            "isin": row["isin"],
+            "exchange": row["exchange"],
+            "series": row["series"],
+            "segment": row["segment"],
+            "auction": row["auction"],
+            "order_id": row["order_id"],
+            "order_execution_time": row["order_execution_time"],
+            "Filename": filename,
+        }
+
+        for key, value in row_dict.items():
+            if pd.isna(value):
+                row_dict[key] = None
+
+        rows.append(row_dict)
+
+    if not rows:
+        logger.warning("No Zerodha tradebook rows parsed from file at %s", filepath)
+        return None
+
+    return rows
+
+
 if __name__ == "__main__":
     # result=parse_pdf(r"C:\FinFlow\data\BankStatements\BS7-SBI_redact.pdf","Bank")
     # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI5_PAYTM_redact.pdf", "UPI")
     # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI1-GPAY_redact.pdf", "UPI")
-    result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI2-PHONEPE_redact.pdf", "UPI")
+    # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI2-PHONEPE_redact.pdf", "UPI")
+    result = parse_zerodha_tradebook(r"C:\FinFlow\data\Tradebook\TradeBook1-Zeroda_redact.csv")
     print(result)
     
