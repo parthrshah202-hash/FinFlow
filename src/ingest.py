@@ -3,8 +3,50 @@ import re
 import os
 import pandas as pd
 import pdfplumber
+from pandas.errors import ParserError
+from pdfplumber.utils.exceptions import PdfminerException
 
 logger = logging.getLogger()
+
+
+def headers_to_dicts(result_dict: dict) -> list[dict]:
+    """Convert a {"headers": [...], "rows": [[...], ...]} structure into a list of dicts,
+    zipping each row against the headers list.
+
+    Args:
+        result_dict (dict): dict with keys "headers" (list of str) and "rows" (list of lists)
+
+    Returns:
+        list[dict]: one dict per row, keyed by header name
+    """
+    return [dict(zip(result_dict["headers"], row)) for row in result_dict["rows"]]
+
+
+def get_filename(filepath: str) -> str:
+    """Extract the base filename from a full file path.
+
+    Args:
+        filepath (str): full path to the source file
+
+    Returns:
+        str: the base filename (e.g. "statement.pdf")
+    """
+    return os.path.basename(filepath)
+
+
+def attach_filename(list_of_dicts: list[dict], filename: str) -> None:
+    """Attach the source filename to every dict in a list, in place, under the key "Filename".
+
+    Args:
+        list_of_dicts (list[dict]): rows already converted to dicts
+        filename (str): filename to attach to every row
+
+    Returns:
+        None (mutates list_of_dicts in place)
+    """
+    for row in list_of_dicts:
+        row["Filename"] = filename
+
 
 def clean_dict(result_dict):
     """Clean the extracted result dict in place
@@ -69,15 +111,14 @@ def parse_paytm(raw_text, file_path):
         file_path (str): Path to the source PDF file for logging purposes
 
     Returns:
-        dict: A dictionary with structure {"headers": [...], "rows": [...]} containing
-              parsed transactions, or None if parsing fails
+        list[dict]: A list of dictionaries representing parsed transactions with attached filenames on success. On failure, returns (None, str) with a reason string.
     """
     period_pattern = re.compile(r"(\d{1,2})\s+([A-Za-z]{3})'?(\d{2})\s*-\s*(\d{1,2})\s+([A-Za-z]{3})'?(\d{2})")
     period_match = period_pattern.search(raw_text)
 
     if not period_match:
         logger.warning("No statement period found in Paytm file at %s", file_path)
-        return None
+        return None, "no statement period found"
 
     start_day, start_month, start_year_raw, end_day, end_month, end_year_raw = period_match.groups()
     start_year = int(start_year_raw) if len(start_year_raw) == 4 else (2000 + int(start_year_raw))
@@ -88,7 +129,7 @@ def parse_paytm(raw_text, file_path):
             "Paytm statement year mismatch for %s: start year %s, end year %s",
             file_path, start_year, end_year,
         )
-        return None
+        return None, "statement year mismatch"
 
     statement_year = start_year
 
@@ -128,7 +169,7 @@ def parse_paytm(raw_text, file_path):
 
     if not transaction_blobs:
         logger.warning("No Paytm transactions found in file at %s", file_path)
-        return None
+        return None, "no transactions found"
 
     rows = []
     for date_match, time_value, transaction_blob in transaction_blobs:
@@ -160,12 +201,15 @@ def parse_paytm(raw_text, file_path):
 
     if not rows:
         logger.warning("No Paytm transactions parsed from file at %s", file_path)
-        return None
+        return None, "no transactions parsed"
 
     result_dict = {"headers": ["Date & Time", "Transaction Details", "UPI Ref No.", "Amount"], "rows": rows}
     clean_dict(result_dict)
-    
-    return result_dict
+
+    result = headers_to_dicts(result_dict)
+    filename = get_filename(file_path)
+    attach_filename(result, filename)
+    return result
 
 def parse_gpay(raw_text, file_path):
     """Parse Google Pay UPI transaction statement and extract transaction details.
@@ -173,6 +217,9 @@ def parse_gpay(raw_text, file_path):
     Args:
         raw_text (str): Raw text content extracted from the Google Pay PDF statement
         file_path (str): Path to the source PDF file for logging purposes
+        
+    Returns:
+        list[dict]: A list of dictionaries representing parsed transactions with attached filenames on success. On failure, returns (None, str) with a reason string.
     """
     raw_blob = "\n".join(line.strip() for line in raw_text.splitlines() if line.strip())
 
@@ -205,7 +252,7 @@ def parse_gpay(raw_text, file_path):
 
     if not transaction_blocks:
         logger.warning("No GPay transactions found in file at %s", file_path)
-        return None
+        return None, "no transactions found"
 
     rows = []
     for transaction_lines in transaction_blocks:
@@ -268,7 +315,11 @@ def parse_gpay(raw_text, file_path):
 
     result_dict = {"headers": ["Date & Time", "Transaction Details", "UPI Transaction ID", "Amount", "Type"], "rows": rows}
     clean_dict(result_dict)
-    return result_dict
+
+    result = headers_to_dicts(result_dict)
+    filename = get_filename(file_path)
+    attach_filename(result, filename)
+    return result
 
 def parse_phonepe(raw_text, file_path):
     """Parse PhonePe UPI transaction statement and extract transaction details.
@@ -276,6 +327,9 @@ def parse_phonepe(raw_text, file_path):
     Args:
         raw_text (str): Raw text content extracted from the PhonePe PDF statement
         file_path (str): Path to the source PDF file for logging
+        
+    Returns:
+        list[dict]: A list of dictionaries representing parsed transactions with attached filenames on success. On failure, returns (None, str) with a reason string.
     """
     raw_blob = "\n".join(line.strip() for line in raw_text.splitlines() if line.strip())
     
@@ -336,7 +390,7 @@ def parse_phonepe(raw_text, file_path):
 
     if not transaction_blocks:
         logger.warning("No PhonePe transactions found in file at %s", file_path)
-        return None
+        return None, "no transactions found"
 
     rows = []
     for transaction_lines in transaction_blocks:
@@ -383,12 +437,16 @@ def parse_phonepe(raw_text, file_path):
 
     if not rows:
         logger.warning("No PhonePe transactions parsed from file at %s", file_path)
-        return None
+        return None, "no transactions parsed"
 
     result_dict = {"headers": ["Date & Time", "Transaction Details", "UTR No.", "Amount", "Type"], "rows": rows}
-    
+
     clean_dict(result_dict)
-    return result_dict
+
+    result = headers_to_dicts(result_dict)
+    filename = get_filename(file_path)
+    attach_filename(result, filename)
+    return result
 
 def parse_pdf(file_path, source_type):
     """Parse a PDF received from the user
@@ -398,18 +456,27 @@ def parse_pdf(file_path, source_type):
         source_type (string): Type of document - Bank statement/UPI transaction/Tradebook
 
     Returns:
-        dict: A dictionary of structure {"headers": [...], "rows": [...]}
+        list[dict]: A list of structured dictionaries representing transaction records on success. On failure, returns (None, str) with a reason string.
 
     """
     if source_type == "Bank":
-        with pdfplumber.open(file_path) as pdf:
+        try:
+            pdf = pdfplumber.open(file_path)
+        except PdfminerException as e:
+            logger.warning(f"Unable to open PDF at {file_path}: {e}")
+            raise
+
+        with pdf:
+            if len(pdf.pages) == 0:
+                logger.warning(f"PDF at {file_path} has zero pages")
+                return None, "pdf has zero pages"
             first_page = pdf.pages[0]
             tables = first_page.extract_tables()
             target = ["date", "dt."]
             result_dict = {"headers": [], "rows": []}
             if not tables:
                 logger.warning(f"PDF at {file_path} does not have a table on the 1st Page")
-                return None
+                return None, "no table found on first page"
             for table in tables:
                 headerRow = table[0]
                 has_match = any(sub in cell.lower() for cell in headerRow if cell is not None for sub in target)
@@ -419,7 +486,7 @@ def parse_pdf(file_path, source_type):
                     break
             if not result_dict["headers"]:
                 logger.warning(f"PDF at {file_path} does not have a Transaction Table on the 1st Page")
-                return None
+                return None, "no transaction table found on first page"
 
             total_pages = len(pdf.pages)
             for pageNumber in range(1, total_pages):
@@ -427,21 +494,34 @@ def parse_pdf(file_path, source_type):
                 table = page.extract_table()
                 if table is None:
                     logger.warning(f"PDF at {file_path} does not have a table on the page {pageNumber + 1}")
-                    return None
+                    return None, f"no table found on page {pageNumber + 1}"
                 headerRow = table[0]
                 has_match = any(sub in cell.lower() for cell in headerRow if cell is not None for sub in target)
                 if has_match:
                     result_dict["rows"].extend(table[1:])
                 else:
                     logger.warning(f"The file at {file_path} does not have a header row for page {pageNumber + 1}")
-                    return None
+                    return None, f"no header row match on page {pageNumber + 1}"
 
         logger.info(f"Data from PDF at {file_path} extracted successfully")
         clean_dict(result_dict)
-        return result_dict
+
+        result = headers_to_dicts(result_dict)
+        filename = get_filename(file_path)
+        attach_filename(result, filename)
+        return result
 
     if source_type == "UPI":
-        with pdfplumber.open(file_path) as pdf:
+        try:
+            pdf = pdfplumber.open(file_path)
+        except PdfminerException as e:
+            logger.warning(f"Unable to open PDF at {file_path}: {e}")
+            raise
+
+        with pdf:
+            if len(pdf.pages) == 0:
+                logger.warning(f"PDF at {file_path} has zero pages")
+                return None, "pdf has zero pages"
             raw_text_parts = []
             for page in pdf.pages:
                 extracted_text = page.extract_text() or ""
@@ -456,9 +536,10 @@ def parse_pdf(file_path, source_type):
             if source == "phonepe":
                 return parse_phonepe(raw_text, file_path)
             logger.warning("Unable to detect UPI source for %s", file_path)
-            return None
+            return None, "unable to detect UPI source"
 
-    return None
+    logger.warning(f"Unsupported source_type '{source_type}' for file {file_path}")
+    return None, "unsupported source_type"
 
 
 def parse_zerodha_tradebook(filepath: str) -> list[dict]:
@@ -468,8 +549,7 @@ def parse_zerodha_tradebook(filepath: str) -> list[dict]:
         filepath (str): Path to the Zerodha tradebook CSV file for logging and ingestion
 
     Returns:
-        list[dict] or None: A list of dictionaries representing individual trade records with
-            sanitized fields, or None if validation fails or the file is empty
+        list[dict]: A list of dictionaries representing individual trade records with sanitized fields on success. On failure, returns (None, str) with a reason string.
     """
     expected_columns = {
         "symbol",
@@ -487,17 +567,21 @@ def parse_zerodha_tradebook(filepath: str) -> list[dict]:
         "order_execution_time",
         "expiry_date",
     }
-    df = pd.read_csv(filepath, dtype={"trade_id": str, "order_id": str})
+    try:
+        df = pd.read_csv(filepath, dtype={"trade_id": str, "order_id": str})
+    except (UnicodeDecodeError, ParserError) as e:
+        logger.warning(f"Unable to read CSV at {filepath}: {e}")
+        raise
 
     if set(df.columns) != expected_columns:
         logger.warning("file with expected headers not uploaded: %s", filepath)
-        return None
+        return None, "unexpected file headers"
 
     if df.shape[0] == 0:
         logger.warning("File is empty: %s", filepath)
-        return None
+        return None, "file is empty"
 
-    filename = os.path.basename(filepath)
+    filename = get_filename(filepath)
     rows = []
 
     for _, row in df.iterrows():
@@ -526,16 +610,7 @@ def parse_zerodha_tradebook(filepath: str) -> list[dict]:
 
     if not rows:
         logger.warning("No Zerodha tradebook rows parsed from file at %s", filepath)
-        return None
+        return None, "no rows parsed"
 
     return rows
-
-
-if __name__ == "__main__":
-    # result=parse_pdf(r"C:\FinFlow\data\BankStatements\BS7-SBI_redact.pdf","Bank")
-    # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI5_PAYTM_redact.pdf", "UPI")
-    # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI1-GPAY_redact.pdf", "UPI")
-    # result = parse_pdf(r"C:\FinFlow\data\UPIExports\UPI2-PHONEPE_redact.pdf", "UPI")
-    result = parse_zerodha_tradebook(r"C:\FinFlow\data\Tradebook\TradeBook1-Zeroda_redact.csv")
-    print(result)
     
