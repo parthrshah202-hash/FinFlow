@@ -28,19 +28,7 @@ def get_engine() -> Engine:
 
 
 def create_table(engine: Engine) -> None:
-    create_table_statement = text(
-        """
-        CREATE TABLE IF NOT EXISTS raw_uploads (
-            id SERIAL PRIMARY KEY,
-            filename TEXT NOT NULL,
-            source_type TEXT NOT NULL,
-            raw_data JSONB NOT NULL,
-            uploaded_at TIMESTAMP NOT NULL DEFAULT NOW()
-        )
-        """
-    )
-    with engine.begin() as connection:
-        connection.execute(create_table_statement)
+    metadata.create_all(engine)
     logger.info("Ensured table raw_uploads exists")
 
 
