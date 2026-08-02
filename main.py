@@ -25,6 +25,7 @@ def main():
     create_table(engine)
 
     skipped_files = []
+    db_rejected_files = []
     inserted_files = []
 
     for folder, (parser_func, source_type) in FOLDER_DISPATCH.items():
@@ -37,11 +38,12 @@ def main():
                     try:
                         insert_data(result, engine, filename, source_type)
                         inserted_files.append(file_path)
-                    except (IntegrityError, OperationalError) as db_err:
-                        logger.warning("DB error inserting %s: %s", file_path, db_err)
-                        raise
-                    except Exception as e:
-                        logger.warning("Unexpected error inserting %s: %s", file_path, e)
+                    except IntegrityError as integ_err:
+                        logger.warning("Integrity constraint failed for %s: %s", file_path, integ_err)
+                        db_rejected_files.append(file_path)
+                        continue
+                    except OperationalError as op_err:
+                        logger.warning("DB error inserting %s: %s", file_path, op_err)
                         raise
                 else:
                     _, reason = output
@@ -51,7 +53,13 @@ def main():
                 skipped_files.append(file_path)
                 continue
 
-    logger.info("Run complete: %d inserted, %d skipped: %s", len(inserted_files), len(skipped_files), skipped_files)
+    logger.info(
+        "Run complete: %d inserted, %d parse-skipped, %d db-rejected. DB Rejected: %s",
+        len(inserted_files),
+        len(skipped_files),
+        len(db_rejected_files),
+        db_rejected_files
+    )
 
 if __name__ == "__main__":
     main()
