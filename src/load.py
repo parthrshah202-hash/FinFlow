@@ -7,7 +7,7 @@ from sqlalchemy import CheckConstraint, Column, DateTime, Float, Integer, MetaDa
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
 
-from ingest import logger
+from src.ingest import logger
 
 metadata = MetaData()
 raw_uploads = Table(
@@ -78,7 +78,7 @@ def fetch_prototype_embeddings(engine: Engine) -> list[tuple[str, str, np.ndarra
     )
     with engine.connect() as connection:
         result = connection.execute(query)
-        rows = [(row[0], row[1], row[2]) for row in result.fetchall()]
+        rows = [(row[0], row[1], np.array(row[2],dtype=np.float32)) for row in result.fetchall()]
     logger.info("Fetched %s rows from prototype_embeddings", len(rows))
     return rows
 
