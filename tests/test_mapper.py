@@ -110,8 +110,12 @@ def test_load_threshold_reads_config_value():
 
 def test_map_headers_sets_flags_for_empty_prototypes(monkeypatch):
     fake_model = FakeModel()
-    monkeypatch.setattr(mapper, "_get_model", lambda: fake_model)
+    monkeypatch.setattr("src.mapper._get_model", lambda: fake_model)
 
     result = mapper.map_headers(["revenue"], [])
 
+    assert len(result) == 1
+    assert result[0]["incoming_header"] == "revenue"
+    assert result[0]["matched_canonical_field"] is None
+    assert result[0]["similarity_score"] == 0.0
     assert result[0]["mapping_flag"] == "No valid prototype found"
