@@ -2,9 +2,9 @@ from pathlib import Path
 from pdfplumber.utils.exceptions import PdfminerException
 from pandas.errors import ParserError
 from sqlalchemy.exc import IntegrityError, OperationalError
-import logging
+from src.logging_config import get_logger
 
-from src.ingest import parse_pdf, parse_zerodha_tradebook, get_filename, logger
+from src.ingest import parse_pdf, parse_zerodha_tradebook, get_filename
 from src.load import get_engine, create_table, insert_data
 
 FOLDER_DISPATCH = {
@@ -14,12 +14,7 @@ FOLDER_DISPATCH = {
 }
 
 def main():
-    logging.basicConfig(
-        filename="logs/pipeline.log",
-        format='%(asctime)s %(levelname)s: %(message)s',
-        filemode='w',
-    )
-    logger.setLevel(logging.INFO)
+    logger = get_logger()
     
     engine = get_engine()
     create_table(engine)

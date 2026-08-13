@@ -7,7 +7,9 @@ from sqlalchemy import CheckConstraint, Column, DateTime, Float, Integer, MetaDa
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
 
-from src.ingest import logger
+from src.logging_config import get_logger
+
+logger = get_logger()
 
 metadata = MetaData()
 raw_uploads = Table(

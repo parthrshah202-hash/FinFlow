@@ -3,10 +3,11 @@ import re
 import os
 import pandas as pd
 import pdfplumber
+from src.logging_config import get_logger
 from pandas.errors import ParserError
 from pdfplumber.utils.exceptions import PdfminerException
 
-logger = logging.getLogger()
+logger = get_logger()
 
 
 def headers_to_dicts(result_dict: dict) -> list[dict]:

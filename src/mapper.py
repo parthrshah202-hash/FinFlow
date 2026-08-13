@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
-
+from src.logging_config import get_logger
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+
+logger = get_logger()
 
 try:
     from sentence_transformers import SentenceTransformer
