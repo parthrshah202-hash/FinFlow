@@ -1,0 +1,38 @@
+{
+  "Amount (Rs)": [
+    "Amount",
+    "Credit",
+    "Debit",
+    "Deposit Amount (INR)",
+    "Deposit Amt.",
+    "price",
+    "Withdrawal Amount (INR)",
+    "Withdrawal Amt."
+  ],
+  "Notes": [
+    "Cheque Number",
+    "Chq./Ref.No",
+    "Notes & Tags",
+    "quantity",
+    "Ref No./ChequeNo."
+  ],
+  "Transaction Date": [
+    "Date",
+    "Date & time",
+    "trade_date",
+    "Transaction Date",
+    "Txn Date"
+  ],
+  "Transaction Details": [
+    "Description",
+    "Narration",
+    "Particulars",
+    "symbol",
+    "Transaction details",
+    "Transaction Remarks"
+  ],
+  "Type": [
+    "trade_type",
+    "Type"
+  ]
+}
