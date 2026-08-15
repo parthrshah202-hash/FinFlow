@@ -3,7 +3,7 @@ import os
 import numpy as np
 from dotenv import load_dotenv
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import CheckConstraint, Column, DateTime, Float, Integer, MetaData, Table, Text, create_engine, func, select
+from sqlalchemy import CheckConstraint, Column, DateTime, Float, Integer, MetaData, Table, Text, create_engine, func, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
 
@@ -34,7 +34,7 @@ mapping_log = Table(
     "mapping_log",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("run_id", Text, nullable=False),
+    Column("run_id", Integer, nullable=False),
     Column("source_filename", Text, nullable=False),
     Column("incoming_header", Text, nullable=False),
     Column("matched_canonical_field", Text, nullable=False),
@@ -59,7 +59,9 @@ def get_engine() -> Engine:
 
 def create_table(engine: Engine) -> None:
     metadata.create_all(engine)
-    logger.info("Ensured tables exist: raw_uploads, prototype_embeddings, mapping_log")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE SEQUENCE IF NOT EXISTS pipeline_run_id_seq"))
+    logger.info("Ensured tables exist: raw_uploads, prototype_embeddings, mapping_log; pipeline_run_id_seq sequence ensured")
 
 
 def insert_data(data: list[dict], engine: Engine, filename: str, source_type: str) -> None:
@@ -87,6 +89,22 @@ def fetch_prototype_embeddings(engine: Engine) -> list[tuple[str, str, np.ndarra
 
 def get_headers(data: list[dict]) -> list[str]:
     return list(data[0].keys())
+
+
+def stamp_mapping_metadata(row: dict, run_id: int, run_type: str, filename: str) -> None:
+    row["run_id"] = run_id
+    row["run_type"] = run_type
+    row["source_filename"] = filename
+
+
+def insert_mapping_log(data: list[dict], engine: Engine) -> None:
+    if not data:
+        logger.info("No data to insert for mapping_log, skipping")
+        return
+    with engine.begin() as connection:
+        connection.execute(mapping_log.insert(), data)
+    logger.info("Inserted %s rows into mapping_log", len(data))
+
     
 if __name__ == "__main__":
     engine = get_engine()
