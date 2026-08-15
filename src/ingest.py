@@ -504,6 +504,10 @@ def parse_pdf(file_path, source_type):
                     logger.warning(f"The file at {file_path} does not have a header row for page {pageNumber + 1}")
                     return None, f"no header row match on page {pageNumber + 1}"
 
+            if not result_dict["rows"]:
+                logger.warning(f"No Bank transactions parsed from file at {file_path}")
+                return None, "no transactions parsed"
+        
         logger.info(f"Data from PDF at {file_path} extracted successfully")
         clean_dict(result_dict)
 
