@@ -497,12 +497,18 @@ def parse_pdf(file_path, source_type):
                     logger.warning(f"PDF at {file_path} does not have a table on the page {pageNumber + 1}")
                     return None, f"no table found on page {pageNumber + 1}"
                 headerRow = table[0]
-                has_match = any(sub in cell.lower() for cell in headerRow if cell is not None for sub in target)
-                if has_match:
+                # Check only headerRow[0] for header match
+                if headerRow[0] is not None and any(sub in headerRow[0].lower() for sub in target):
                     result_dict["rows"].extend(table[1:])
                 else:
-                    logger.warning(f"The file at {file_path} does not have a header row for page {pageNumber + 1}")
-                    return None, f"no header row match on page {pageNumber + 1}"
+                    # headerRow[0] does not match target - check if row length matches
+                    if len(table[0]) == len(result_dict["headers"]):
+                        # Treat table[0] as a transaction row
+                        logger.debug(f"Page {pageNumber + 1} treated as headerless data for {file_path}")
+                        result_dict["rows"].extend(table)
+                    else:
+                        logger.warning(f"The file at {file_path} does not have a header row for page {pageNumber + 1}")
+                        return None, f"no header row match and row length mismatch on page {pageNumber + 1}"
 
             if not result_dict["rows"]:
                 logger.warning(f"No Bank transactions parsed from file at {file_path}")
