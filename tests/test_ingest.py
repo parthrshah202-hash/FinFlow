@@ -22,6 +22,28 @@ from src.ingest import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+class FakePage:
+    def __init__(self, table_data=None):
+        self.table_data = table_data
+
+    def extract_tables(self):
+        return [self.table_data] if self.table_data is not None else []
+
+    def extract_table(self):
+        return self.table_data
+
+
+class FakePDF:
+    def __init__(self, pages):
+        self.pages = pages
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return None
+
+
 @pytest.fixture
 def gpay_pdf_path() -> Path:
     return PROJECT_ROOT / "data" / "UPIExports" / "UPI1-GPAY_redact.pdf"
@@ -180,6 +202,98 @@ def test_parse_pdf_bank_golden_path(bank_pdf_path: Path) -> None:
     assert result
     assert all("Filename" in row for row in result)
     assert all(row["Filename"] == bank_pdf_path.name for row in result)
+
+
+def test_parse_pdf_bank_page2_header_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    page1_table = [
+        ["Txn Date", "Description", "Amount"],
+        ["2026-01-01", "Opening", "100.00"],
+    ]
+    page2_table = [
+        ["Txn Date", "Description", "Amount"],
+        ["2026-01-02", "Transfer", "50.00"],
+    ]
+
+    pages = [FakePage(page1_table), FakePage(page2_table)]
+    monkeypatch.setattr(
+        "src.ingest.pdfplumber.open", lambda *args, **kwargs: FakePDF(pages)
+    )
+
+    result = parse_pdf("dummy.pdf", "Bank")
+
+    expected = [
+        {
+            "Txn Date": "2026-01-01",
+            "Description": "Opening",
+            "Amount": "100.00",
+            "Filename": "dummy.pdf",
+        },
+        {
+            "Txn Date": "2026-01-02",
+            "Description": "Transfer",
+            "Amount": "50.00",
+            "Filename": "dummy.pdf",
+        },
+    ]
+    assert result == expected
+
+
+def test_parse_pdf_bank_page2_headerless_length_match(monkeypatch: pytest.MonkeyPatch) -> None:
+    page1_table = [
+        ["Txn Date", "Description", "Amount"],
+        ["2026-01-01", "Salary", "5000.00"],
+    ]
+    page2_table = [
+        ["2026-01-02", "Grocery", "120.00"],
+        ["2026-01-03", "Fuel", "80.00"],
+    ]
+
+    pages = [FakePage(page1_table), FakePage(page2_table)]
+    monkeypatch.setattr(
+        "src.ingest.pdfplumber.open", lambda *args, **kwargs: FakePDF(pages)
+    )
+
+    result = parse_pdf("dummy.pdf", "Bank")
+
+    expected = [
+        {
+            "Txn Date": "2026-01-01",
+            "Description": "Salary",
+            "Amount": "5000.00",
+            "Filename": "dummy.pdf",
+        },
+        {
+            "Txn Date": "2026-01-02",
+            "Description": "Grocery",
+            "Amount": "120.00",
+            "Filename": "dummy.pdf",
+        },
+        {
+            "Txn Date": "2026-01-03",
+            "Description": "Fuel",
+            "Amount": "80.00",
+            "Filename": "dummy.pdf",
+        },
+    ]
+    assert result == expected
+
+
+def test_parse_pdf_bank_page2_length_mismatch_aborts(monkeypatch: pytest.MonkeyPatch) -> None:
+    page1_table = [
+        ["Txn Date", "Description", "Amount"],
+        ["2026-01-01", "Salary", "5000.00"],
+    ]
+    page2_table = [["Disclaimer text", "Page 2 of 2"]]
+
+    pages = [FakePage(page1_table), FakePage(page2_table)]
+    monkeypatch.setattr(
+        "src.ingest.pdfplumber.open", lambda *args, **kwargs: FakePDF(pages)
+    )
+
+    result = parse_pdf("dummy.pdf", "Bank")
+
+    expected = (None, "no header row match and row length mismatch on page 2")
+    assert result == expected
 
 
 def test_parse_pdf_zero_pages_bank(zero_page_pdf: Path) -> None:
