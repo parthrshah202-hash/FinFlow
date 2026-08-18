@@ -1,3 +1,4 @@
 {
-  "mapping_confidence_threshold": 0.75
+  "mapping_confidence_threshold": 0.75,
+  "fuzzy_confidence_threshold": 0.45
 }

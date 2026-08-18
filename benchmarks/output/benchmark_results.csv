@@ -1,0 +1,70 @@
+header,source,ground_truth,exact_match_result,fuzzy_match_result,fuzzy_score,st_match_result,st_score,exact_correct,fuzzy_top1_correct,fuzzy_threshold_pass,st_top1_correct,st_threshold_pass
+Txn Date,SBI_bank_statement,Transaction Date,,Transaction Date,0.6666666666666665,Transaction Date,0.9999999999996394,False,True,True,True,True
+Value Date,SBI_bank_statement,NULL,,Transaction Date,0.5714285714285715,Transaction Date,0.6879604167169405,True,False,False,True,True
+Description,SBI_bank_statement,Transaction Details,,Transaction Date,0.5925925925925926,Transaction Details,0.9999999999993332,False,False,False,True,True
+Ref No./Cheque No.,SBI_bank_statement,Notes,,Notes,0.26086956521739124,Notes,0.9102245506095602,False,True,False,True,True
+Debit,SBI_bank_statement,Amount (Rs),,Transaction Details,0.33333333333333326,Amount (Rs),0.9999999999996663,False,False,False,True,True
+Credit,SBI_bank_statement,Amount (Rs),,Transaction Details,0.24,Amount (Rs),0.9999999999995435,False,False,False,True,True
+Balance,SBI_bank_statement,NULL,,Filename,0.4,Notes,0.4799776299926978,True,True,True,True,True
+Tran Date,AXIS_bank_statement,Transaction Date,,Transaction Date,0.72,Transaction Date,0.6823724578295457,False,True,True,True,False
+Chq N,AXIS_bank_statement,Notes,,Notes,0.2,Notes,0.6004456974701093,False,True,False,True,False
+Particulars,AXIS_bank_statement,Transaction Details,,Transaction Details,0.33333333333333326,Transaction Details,0.9999999999993476,False,True,False,True,True
+Debit,AXIS_bank_statement,Amount (Rs),,Transaction Details,0.33333333333333326,Amount (Rs),0.9999999999996663,False,False,False,True,True
+Credit,AXIS_bank_statement,Amount (Rs),,Transaction Details,0.24,Amount (Rs),0.9999999999995435,False,False,False,True,True
+Balance,AXIS_bank_statement,NULL,,Filename,0.4,Notes,0.4799776299926978,True,True,True,True,True
+Init.Br,AXIS_bank_statement,NULL,,Amount (Rs),0.2222222222222223,Amount (Rs),0.2846332501787684,True,True,True,True,True
+Date,KARAD_bank_statement,Transaction Date,,Transaction Date,1.0,Transaction Date,0.9999999999996192,False,True,True,True,True
+Particulars,KARAD_bank_statement,Transaction Details,,Transaction Details,0.33333333333333326,Transaction Details,0.9999999999993476,False,True,False,True,True
+Chq No.,KARAD_bank_statement,Notes,,Notes,0.33333333333333326,Notes,0.6773613754081309,False,True,False,True,False
+Value Date,KARAD_bank_statement,NULL,,Transaction Date,0.5714285714285715,Transaction Date,0.6879604167169405,True,False,False,True,True
+Debit,KARAD_bank_statement,Amount (Rs),,Transaction Details,0.33333333333333326,Amount (Rs),0.9999999999996663,False,False,False,True,True
+Credit,KARAD_bank_statement,Amount (Rs),,Transaction Details,0.24,Amount (Rs),0.9999999999995435,False,False,False,True,True
+Balance,KARAD_bank_statement,NULL,,Filename,0.4,Notes,0.4799776299926978,True,True,True,True,True
+Date,HDFC_bank_statement,Transaction Date,,Transaction Date,1.0,Transaction Date,0.9999999999996192,False,True,True,True,True
+Narration,HDFC_bank_statement,Transaction Details,,Transaction Date,0.56,Transaction Details,1.0000000000000004,False,False,False,True,True
+Chq./Ref.No,HDFC_bank_statement,Notes,,Notes,0.25,Notes,0.9999999999995988,False,True,False,True,True
+Value Dt,HDFC_bank_statement,NULL,,Transaction Date,0.33333333333333326,Amount (Rs),0.3728781268685514,True,True,True,True,True
+Withdrawal Amt.,HDFC_bank_statement,Amount (Rs),,Transaction Date,0.32258064516129037,Amount (Rs),0.9999999999997142,False,False,False,True,True
+Deposit Amt.,HDFC_bank_statement,Amount (Rs),,Notes,0.35294117647058826,Amount (Rs),0.9999999999996265,False,False,False,True,True
+Closing Balance,HDFC_bank_statement,NULL,,Transaction Details,0.411764705882353,Amount (Rs),0.292443272302401,True,True,True,True,True
+S No.,ICICI_bank_statement,NULL,,Notes,0.4,Notes,0.2335973022210515,True,True,True,True,True
+Transaction Date,ICICI_bank_statement,Transaction Date,Transaction Date,Transaction Date,1.0,Transaction Date,0.99999999999975,True,True,True,True,True
+Cheque Number,ICICI_bank_statement,Notes,,Filename,0.2857142857142857,Notes,0.9999999999997071,False,False,False,True,True
+Transaction Remarks,ICICI_bank_statement,Transaction Details,,Transaction Date,0.8148148148148148,Transaction Details,0.9999999999996265,False,False,False,True,True
+Withdrawal Amount (Rs) (INR),ICICI_bank_statement,Amount (Rs),,Amount (Rs),1.0,Amount (Rs),0.9014452486902343,False,True,True,True,True
+Deposit Amount (Rs) (INR),ICICI_bank_statement,Amount (Rs),,Amount (Rs),1.0,Amount (Rs),0.9058403270830677,False,True,True,True,True
+Balance(INR),ICICI_bank_statement,NULL,,Transaction Details,0.32258064516129037,Amount (Rs),0.4825101332889264,True,True,True,True,True
+Date & time,GPAY_statement,Transaction Date,,Transaction Date,0.5333333333333333,Transaction Date,0.9999999999995486,False,True,True,True,True
+Transaction details,GPAY_statement,Transaction Details,,Transaction Details,0.9473684210526315,Transaction Details,0.9999999999996577,False,True,True,True,True
+Amount (Rs),GPAY_statement,Amount (Rs),Amount (Rs),Amount (Rs),1.0,Amount (Rs),0.6781807658092639,True,True,True,True,False
+Date,PHONEPE_statement,Transaction Date,,Transaction Date,1.0,Transaction Date,0.9999999999996192,False,True,True,True,True
+Transaction Details,PHONEPE_statement,Transaction Details,Transaction Details,Transaction Details,1.0,Transaction Details,0.9999999999996577,True,True,True,True,True
+Type,PHONEPE_statement,Type,Type,Type,1.0,Type,0.9999999999997393,True,True,True,True,True
+Amount (Rs),PHONEPE_statement,Amount (Rs),Amount (Rs),Amount (Rs),1.0,Amount (Rs),0.6781807658092639,True,True,True,True,False
+Date & Time,PAYTM_statement,Transaction Date,,Transaction Date,0.5333333333333333,Transaction Date,0.9999999999995486,False,True,True,True,True
+Transaction Details,PAYTM_statement,Transaction Details,Transaction Details,Transaction Details,1.0,Transaction Details,0.9999999999996577,True,True,True,True,True
+Notes & Tags,PAYTM_statement,Notes,,Notes,1.0,Notes,0.9999999999997551,False,True,True,True,True
+Your Account,PAYTM_statement,NULL,,Amount (Rs),0.43478260869565216,Amount (Rs),0.4032564045187,True,True,True,True,True
+Amount (Rs),PAYTM_statement,Amount (Rs),Amount (Rs),Amount (Rs),1.0,Amount (Rs),0.6781807658092639,True,True,True,True,False
+symbol,zeroda_tradebook,Transaction Details,,Amount (Rs),0.35294117647058826,Transaction Details,0.9999999999996481,False,False,False,True,True
+isin,zeroda_tradebook,NULL,,Transaction Details,0.34782608695652173,Amount (Rs),0.307530233859468,True,True,True,True,True
+trade_date,zeroda_tradebook,Transaction Date,,Transaction Date,0.3846153846153846,Transaction Date,0.9999999999996165,False,True,False,True,True
+exchange,zeroda_tradebook,NULL,,Filename,0.375,Type,0.4145785482188391,True,True,True,True,True
+segment,zeroda_tradebook,NULL,,Amount (Rs),0.4444444444444444,Transaction Details,0.29480717920843547,True,True,True,True,True
+series,zeroda_tradebook,NULL,,Notes,0.36363636363636365,Amount (Rs),0.3839593036035605,True,True,True,True,True
+trade_type,zeroda_tradebook,Type,,Type,0.42857142857142855,Type,1.0000000000000013,False,True,False,True,True
+auction,zeroda_tradebook,NULL,,Transaction Date,0.5217391304347826,Amount (Rs),0.4672158318319758,True,False,False,True,True
+quantity,zeroda_tradebook,Notes,,Transaction Date,0.33333333333333326,Notes,0.9999999999995751,False,False,False,True,True
+price,zeroda_tradebook,Amount (Rs),,Type,0.4444444444444444,Amount (Rs),0.9999999999993844,False,False,False,True,True
+trade_id,zeroda_tradebook,NULL,,Transaction Date,0.33333333333333326,Type,0.6833564131252232,True,True,True,True,True
+order_id,zeroda_tradebook,NULL,,Notes,0.3076923076923077,Transaction Date,0.34046884381106934,True,True,True,True,True
+order_execution_time,zeroda_tradebook,NULL,,Transaction Date,0.38888888888888884,Transaction Date,0.3621524260066814,True,True,True,True,True
+expiry_date,zeroda_tradebook,NULL,,Transaction Details,0.33333333333333326,Transaction Date,0.5475918370348589,True,True,True,True,True
+Date,VISHWESHVAR_bank _statement,Transaction Date,,Transaction Date,1.0,Transaction Date,0.9999999999996192,False,True,True,True,True
+Scroll No,VISHWESHVAR_bank _statement,NULL,,Notes,0.2857142857142857,Type,0.257550057393895,True,True,True,True,True
+Particulars,VISHWESHVAR_bank _statement,Transaction Details,,Transaction Details,0.33333333333333326,Transaction Details,0.9999999999993476,False,True,False,True,True
+Chq Ref,VISHWESHVAR_bank _statement,Notes,,Type,0.18181818181818188,Notes,0.8987909522618581,False,False,False,True,True
+Debit,VISHWESHVAR_bank _statement,Amount (Rs),,Transaction Details,0.33333333333333326,Amount (Rs),0.9999999999996663,False,False,False,True,True
+Credit,VISHWESHVAR_bank _statement,Amount (Rs),,Transaction Details,0.24,Amount (Rs),0.9999999999995435,False,False,False,True,True
+Balance,VISHWESHVAR_bank _statement,NULL,,Filename,0.4,Notes,0.4799776299926978,True,True,True,True,True
+Br.,VISHWESHVAR_bank _statement,NULL,,Transaction Date,0.10526315789473685,Amount (Rs),0.3605021142089581,True,True,True,True,True
