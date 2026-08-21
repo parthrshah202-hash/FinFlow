@@ -35,19 +35,6 @@ def get_filename(filepath: str) -> str:
     return os.path.basename(filepath)
 
 
-def attach_filename(list_of_dicts: list[dict], filename: str) -> None:
-    """Attach the source filename to every dict in a list, in place, under the key "Filename".
-
-    Args:
-        list_of_dicts (list[dict]): rows already converted to dicts
-        filename (str): filename to attach to every row
-
-    Returns:
-        None (mutates list_of_dicts in place)
-    """
-    for row in list_of_dicts:
-        row["Filename"] = filename
-
 
 def clean_dict(result_dict):
     """Clean the extracted result dict in place
@@ -112,7 +99,7 @@ def parse_paytm(raw_text, file_path):
         file_path (str): Path to the source PDF file for logging purposes
 
     Returns:
-        list[dict]: A list of dictionaries representing parsed transactions with attached filenames on success. On failure, returns (None, str) with a reason string.
+        list[dict]: A list of dictionaries representing parsed transactions on success. On failure, returns (None, str) with a reason string.
     """
     period_pattern = re.compile(r"(\d{1,2})\s+([A-Za-z]{3})'?(\d{2})\s*-\s*(\d{1,2})\s+([A-Za-z]{3})'?(\d{2})")
     period_match = period_pattern.search(raw_text)
@@ -208,8 +195,6 @@ def parse_paytm(raw_text, file_path):
     clean_dict(result_dict)
 
     result = headers_to_dicts(result_dict)
-    filename = get_filename(file_path)
-    attach_filename(result, filename)
     return result
 
 def parse_gpay(raw_text, file_path):
@@ -220,7 +205,7 @@ def parse_gpay(raw_text, file_path):
         file_path (str): Path to the source PDF file for logging purposes
         
     Returns:
-        list[dict]: A list of dictionaries representing parsed transactions with attached filenames on success. On failure, returns (None, str) with a reason string.
+        list[dict]: A list of dictionaries representing parsed transactions on success. On failure, returns (None, str) with a reason string.
     """
     raw_blob = "\n".join(line.strip() for line in raw_text.splitlines() if line.strip())
 
@@ -318,8 +303,6 @@ def parse_gpay(raw_text, file_path):
     clean_dict(result_dict)
 
     result = headers_to_dicts(result_dict)
-    filename = get_filename(file_path)
-    attach_filename(result, filename)
     return result
 
 def parse_phonepe(raw_text, file_path):
@@ -330,7 +313,7 @@ def parse_phonepe(raw_text, file_path):
         file_path (str): Path to the source PDF file for logging
         
     Returns:
-        list[dict]: A list of dictionaries representing parsed transactions with attached filenames on success. On failure, returns (None, str) with a reason string.
+        list[dict]: A list of dictionaries representing parsed transactions on success. On failure, returns (None, str) with a reason string.
     """
     raw_blob = "\n".join(line.strip() for line in raw_text.splitlines() if line.strip())
     
@@ -445,8 +428,6 @@ def parse_phonepe(raw_text, file_path):
     clean_dict(result_dict)
 
     result = headers_to_dicts(result_dict)
-    filename = get_filename(file_path)
-    attach_filename(result, filename)
     return result
 
 def parse_pdf(file_path, source_type):
@@ -518,8 +499,6 @@ def parse_pdf(file_path, source_type):
         clean_dict(result_dict)
 
         result = headers_to_dicts(result_dict)
-        filename = get_filename(file_path)
-        attach_filename(result, filename)
         return result
 
     if source_type == "UPI":
@@ -592,7 +571,6 @@ def parse_zerodha_tradebook(filepath: str) -> list[dict]:
         logger.warning("File is empty: %s", filepath)
         return None, "file is empty"
 
-    filename = get_filename(filepath)
     rows = []
 
     for _, row in df.iterrows():
@@ -610,7 +588,7 @@ def parse_zerodha_tradebook(filepath: str) -> list[dict]:
             "auction": row["auction"],
             "order_id": row["order_id"],
             "order_execution_time": row["order_execution_time"],
-            "Filename": filename,
+            "expiry_date": row["expiry_date"]
         }
 
         for key, value in row_dict.items():
